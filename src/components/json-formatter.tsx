@@ -1,14 +1,18 @@
 import { useState, useCallback, useMemo } from 'react'
 import { JsonTree } from './json-tree'
+import { jsonThemes } from '@/lib/json-themes'
 
 type IndentSize = 2 | 4
 
 export function JsonFormatter() {
   const [input, setInput] = useState('')
   const [indent, setIndent] = useState<IndentSize>(2)
+  const [themeIndex, setThemeIndex] = useState(0)
   const [error, setError] = useState('')
   const [copied, setCopied] = useState(false)
   const [expandAll, setExpandAll] = useState(true)
+
+  const theme = jsonThemes[themeIndex]
 
   const parsed = useMemo(() => {
     if (!input.trim()) {
@@ -70,6 +74,16 @@ export function JsonFormatter() {
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold text-foreground">JSON 格式化</h2>
         <div className="flex items-center gap-3">
+          <label className="text-sm text-muted-foreground">配色:</label>
+          <select
+            value={themeIndex}
+            onChange={(e) => setThemeIndex(Number(e.target.value))}
+            className="px-2 py-1 text-sm border border-input rounded-md bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+          >
+            {jsonThemes.map((t, i) => (
+              <option key={t.name} value={i}>{t.name}</option>
+            ))}
+          </select>
           <label className="text-sm text-muted-foreground">缩进:</label>
           <select
             value={indent}
@@ -141,7 +155,7 @@ export function JsonFormatter() {
             {error ? (
               <div className="text-destructive">{error}</div>
             ) : parsed !== null ? (
-              <JsonTree value={parsed} expandAll={expandAll} indent={indent} />
+              <JsonTree value={parsed} expandAll={expandAll} indent={indent} theme={theme} />
             ) : (
               <div className="text-muted-foreground">格式化结果...</div>
             )}
@@ -152,9 +166,7 @@ export function JsonFormatter() {
       <div className="flex gap-2">
         <button
           onClick={() => {
-            if (parsed !== null) {
-              copyToClipboard(formatted)
-            }
+            if (parsed !== null) copyToClipboard(formatted)
           }}
           disabled={!parsed}
           className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
@@ -163,9 +175,7 @@ export function JsonFormatter() {
         </button>
         <button
           onClick={() => {
-            if (parsed !== null) {
-              copyToClipboard(compress())
-            }
+            if (parsed !== null) copyToClipboard(compress())
           }}
           disabled={!parsed}
           className="px-4 py-2 bg-secondary text-secondary-foreground rounded-lg text-sm font-medium hover:bg-secondary/80 transition-colors disabled:opacity-50"

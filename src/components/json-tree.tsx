@@ -1,14 +1,16 @@
 import { useState, useCallback, useMemo } from 'react'
+import type { JsonTheme } from '@/lib/json-themes'
 
 interface JsonTreeProps {
   value: unknown
   expandAll: boolean
   indent: number
+  theme: JsonTheme
   isLast?: boolean
   depth?: number
 }
 
-export function JsonTree({ value, expandAll, indent, isLast = true, depth = 0 }: JsonTreeProps) {
+export function JsonTree({ value, expandAll, indent, theme, isLast = true, depth = 0 }: JsonTreeProps) {
   const type = useMemo(() => {
     if (value === null) return 'null'
     if (Array.isArray(value)) return 'array'
@@ -22,13 +24,14 @@ export function JsonTree({ value, expandAll, indent, isLast = true, depth = 0 }:
         type={type}
         expandAll={expandAll}
         indent={indent}
+        theme={theme}
         isLast={isLast}
         depth={depth}
       />
     )
   }
 
-  return <PrimitiveValue value={value} type={type} isLast={isLast} />
+  return <PrimitiveValue value={value} type={type} theme={theme} isLast={isLast} />
 }
 
 function CollapsibleNode({
@@ -36,6 +39,7 @@ function CollapsibleNode({
   type,
   expandAll,
   indent,
+  theme,
   isLast,
   depth,
 }: {
@@ -43,6 +47,7 @@ function CollapsibleNode({
   type: string
   expandAll: boolean
   indent: number
+  theme: JsonTheme
   isLast: boolean
   depth: number
 }) {
@@ -62,7 +67,6 @@ function CollapsibleNode({
 
   const prefix = type === 'array' ? '[' : '{'
   const suffix = type === 'array' ? ']' : '}'
-  const bracketColor = type === 'array' ? 'text-blue-400' : 'text-amber-400'
 
   const pad = (level: number) => `${level * indent * 0.6}em`
 
@@ -77,9 +81,9 @@ function CollapsibleNode({
             className="inline-flex items-center gap-1 hover:bg-accent/50 rounded px-0.5"
           >
             <span className="text-muted-foreground text-xs">▶</span>
-            <span className={bracketColor}>{prefix}</span>
+            <span style={{ color: theme.bracket }}>{prefix}</span>
             <span className="text-muted-foreground text-xs italic">... {label} ...</span>
-            <span className={bracketColor}>{suffix}</span>
+            <span style={{ color: theme.bracket }}>{suffix}</span>
             {!isLast && <span className="text-muted-foreground">,</span>}
           </button>
         </div>
@@ -95,14 +99,14 @@ function CollapsibleNode({
           className="inline-flex items-center gap-1 hover:bg-accent/50 rounded px-0.5"
         >
           <span className="text-muted-foreground text-xs">▼</span>
-          <span className={bracketColor}>{prefix}</span>
+          <span style={{ color: theme.bracket }}>{prefix}</span>
         </button>
       </div>
       {entries.map((entry, i) => (
         <div key={entry.key} style={{ paddingLeft: pad(depth + 1) }}>
           {type === 'object' && (
             <>
-              <span className="text-purple-400">"{String(entry.key)}"</span>
+              <span style={{ color: theme.key }}>"{String(entry.key)}"</span>
               <span className="text-muted-foreground">: </span>
             </>
           )}
@@ -110,13 +114,14 @@ function CollapsibleNode({
             value={entry.value}
             expandAll={expandAll}
             indent={indent}
+            theme={theme}
             isLast={i === entries.length - 1}
             depth={depth + 1}
           />
         </div>
       ))}
       <div style={{ paddingLeft: pad(depth) }}>
-        <span className={bracketColor}>{suffix}</span>
+        <span style={{ color: theme.bracket }}>{suffix}</span>
         {!isLast && <span className="text-muted-foreground">,</span>}
       </div>
     </div>
@@ -126,26 +131,28 @@ function CollapsibleNode({
 function PrimitiveValue({
   value,
   type,
+  theme,
   isLast,
 }: {
   value: unknown
   type: string
+  theme: JsonTheme
   isLast: boolean
 }) {
-  const colorClass = useMemo(() => {
+  const color = useMemo(() => {
     switch (type) {
       case 'string':
-        return 'text-green-400'
+        return theme.string
       case 'number':
-        return 'text-orange-400'
+        return theme.number
       case 'boolean':
-        return 'text-cyan-400'
+        return theme.boolean
       case 'null':
-        return 'text-red-400'
+        return theme.null
       default:
-        return 'text-foreground'
+        return undefined
     }
-  }, [type])
+  }, [type, theme])
 
   const display = useMemo(() => {
     if (type === 'null') return 'null'
@@ -154,7 +161,7 @@ function PrimitiveValue({
   }, [value, type])
 
   return (
-    <span className={colorClass}>
+    <span style={{ color }}>
       {display}
       {!isLast && <span className="text-muted-foreground">,</span>}
     </span>
