@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Tool Kit",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "identifier": "com.toolkit.app",
   "build": {
     "frontendDist": "../dist",
@@ -34,7 +34,7 @@
   "plugins": {
     "updater": {
       "endpoints": [
-        "https://github.com/nicepkg/tool-kit/releases/latest/download/latest.json"
+        "https://github.com/caojiabin2012/tool-kit/releases/latest/download/latest.json"
       ],
       "pubkey": ""
     }

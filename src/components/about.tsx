@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react';
-import { getAppVersion, checkForUpdate } from '@/lib/settings-api';
+import { getAppVersion, checkForUpdate, downloadAndInstallUpdate } from '@/lib/settings-api';
 import type { UpdateInfo } from '@/lib/settings-api';
-import { open } from '@tauri-apps/plugin-shell';
 
 export function About() {
   const [version, setVersion] = useState('');
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
   const [checking, setChecking] = useState(false);
   const [checked, setChecked] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState('');
+  const [updateError, setUpdateError] = useState<string | null>(null);
 
   useEffect(() => {
     getAppVersion().then(setVersion).catch(console.error);
@@ -15,20 +17,33 @@ export function About() {
 
   const handleCheckUpdate = async () => {
     setChecking(true);
+    setUpdateError(null);
     try {
       const info = await checkForUpdate();
       setUpdateInfo(info);
       setChecked(true);
     } catch (error) {
       console.error('Failed to check update:', error);
+      setUpdateError(String(error));
     } finally {
       setChecking(false);
     }
   };
 
   const handleDownload = async () => {
-    if (updateInfo?.download_url) {
-      await open(updateInfo.download_url);
+    if (!updateInfo?.download_url) return;
+    setDownloading(true);
+    setDownloadProgress('正在下载更新...');
+    setUpdateError(null);
+    try {
+      const result = await downloadAndInstallUpdate(updateInfo.download_url);
+      setDownloadProgress(result);
+    } catch (error) {
+      console.error('Failed to download update:', error);
+      setUpdateError(String(error));
+      setDownloadProgress('');
+    } finally {
+      setDownloading(false);
     }
   };
 
@@ -71,11 +86,24 @@ export function About() {
                     <pre className="whitespace-pre-wrap">{updateInfo.release_notes}</pre>
                   </div>
                 )}
+                {downloadProgress && (
+                  <div className="flex items-center gap-2 text-xs text-green-600">
+                    <span>●</span>
+                    <span>{downloadProgress}</span>
+                  </div>
+                )}
+                {updateError && (
+                  <div className="flex items-center gap-2 text-xs text-red-500">
+                    <span>●</span>
+                    <span>{updateError}</span>
+                  </div>
+                )}
                 <button
                   onClick={handleDownload}
-                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
+                  disabled={downloading}
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium disabled:opacity-50"
                 >
-                  下载安装
+                  {downloading ? '下载安装中...' : '立即更新'}
                 </button>
               </div>
             ) : (

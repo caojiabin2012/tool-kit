@@ -24,6 +24,7 @@ interface SettingsProps {
   theme: Theme;
   onThemeChange: (theme: Theme) => void;
   updateInfo: UpdateInfo | null;
+  updateError: string | null;
   checkingUpdate: boolean;
   updateChecked: boolean;
   onCheckUpdate: () => Promise<UpdateInfo | null | undefined>;
@@ -35,6 +36,7 @@ export function Settings({
   theme,
   onThemeChange,
   updateInfo,
+  updateError,
   checkingUpdate,
   updateChecked,
   onCheckUpdate,
@@ -180,7 +182,12 @@ export function Settings({
 
                 {updateChecked && (
                   <div className="pt-2 border-t border-border">
-                    {updateInfo ? (
+                    {updateError ? (
+                      <div className="flex items-start gap-2">
+                        <span className="text-destructive mt-0.5">●</span>
+                        <span className="text-sm text-destructive">{updateError}</span>
+                      </div>
+                    ) : updateInfo ? (
                       <div className="space-y-3">
                         <div className="flex items-center gap-2">
                           <span className="text-orange-500">●</span>

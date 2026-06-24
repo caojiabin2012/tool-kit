@@ -99,6 +99,7 @@ pub fn run() {
             settings::save_settings,
             settings::get_app_version,
             settings::check_for_update,
+            settings::download_and_install_update,
         ])
         .setup(|app| {
             use tauri_plugin_global_shortcut::GlobalShortcutExt;

@@ -18,7 +18,7 @@ export default function App() {
   const [settingsTab, setSettingsTab] = useState<SettingsTab>('general')
   const [jsonFormatterInput, setJsonFormatterInput] = useState<string | undefined>()
   const { theme, setTheme } = useTheme()
-  const { updateInfo, hasUpdate, checking, checked, checkUpdate } = useUpdate()
+  const { updateInfo, updateError, hasUpdate, checking, checked, checkUpdate } = useUpdate()
 
   const openSettings = (tab: SettingsTab = 'general') => {
     setSettingsTab(tab)
@@ -54,6 +54,7 @@ export default function App() {
             theme={theme}
             onThemeChange={setTheme}
             updateInfo={updateInfo}
+            updateError={updateError}
             checkingUpdate={checking}
             updateChecked={checked}
             onCheckUpdate={checkUpdate}

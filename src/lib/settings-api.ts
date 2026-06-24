@@ -27,3 +27,7 @@ export async function getAppVersion(): Promise<string> {
 export async function checkForUpdate(): Promise<UpdateInfo | null> {
   return invoke('check_for_update');
 }
+
+export async function downloadAndInstallUpdate(downloadUrl: string): Promise<string> {
+  return invoke('download_and_install_update', { downloadUrl });
+}

@@ -116,39 +116,80 @@ pub fn get_app_version() -> String {
     env!("CARGO_PKG_VERSION").to_string()
 }
 
+const GITHUB_REPO: &str = "caojiabin2012/tool-kit";
+
+fn is_newer_version(latest: &str, current: &str) -> bool {
+    let parse = |v: &str| -> Vec<u32> {
+        v.split('.')
+            .filter_map(|part| part.parse().ok())
+            .collect()
+    };
+    let latest_parts = parse(latest);
+    let current_parts = parse(current);
+    let len = latest_parts.len().max(current_parts.len());
+
+    for i in 0..len {
+        let latest_part = *latest_parts.get(i).unwrap_or(&0);
+        let current_part = *current_parts.get(i).unwrap_or(&0);
+        if latest_part > current_part {
+            return true;
+        }
+        if latest_part < current_part {
+            return false;
+        }
+    }
+
+    false
+}
+
+fn pick_download_url(assets: &[GitHubAsset]) -> Option<String> {
+    let preferred_suffixes: &[&str] = if cfg!(target_os = "windows") {
+        &["-setup.exe", ".msi"]
+    } else if cfg!(target_os = "macos") {
+        &[".dmg"]
+    } else if cfg!(target_os = "linux") {
+        &[".AppImage", ".deb"]
+    } else {
+        &["-setup.exe", ".msi", ".dmg", ".AppImage", ".deb"]
+    };
+
+    for suffix in preferred_suffixes {
+        if let Some(asset) = assets.iter().find(|a| a.name.ends_with(suffix)) {
+            return Some(asset.browser_download_url.clone());
+        }
+    }
+
+    assets.first().map(|a| a.browser_download_url.clone())
+}
+
 #[tauri::command]
 pub async fn check_for_update() -> Result<Option<UpdateInfo>, String> {
+    let url = format!("https://api.github.com/repos/{GITHUB_REPO}/releases/latest");
     let client = reqwest::Client::new();
     let resp = client
-        .get("https://api.github.com/repos/nicepkg/tool-kit/releases/latest")
+        .get(url)
         .header("User-Agent", "tool-kit-app")
         .header("Accept", "application/vnd.github+json")
         .send()
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| format!("无法连接更新服务器: {e}"))?;
 
     if !resp.status().is_success() {
-        return Ok(None);
+        return Err(format!("检查更新失败 (HTTP {})", resp.status()));
     }
 
-    let release: GitHubRelease = resp.json().await.map_err(|e| e.to_string())?;
+    let release: GitHubRelease = resp
+        .json()
+        .await
+        .map_err(|e| format!("解析更新信息失败: {e}"))?;
     let current = env!("CARGO_PKG_VERSION").to_string();
     let latest = release.tag_name.trim_start_matches('v').to_string();
 
-    if latest != current {
-        let download_url = release.assets.iter()
-            .find(|a| {
-                a.name.ends_with(".msi")
-                    || a.name.ends_with("-setup.exe")
-                    || a.name.ends_with(".dmg")
-                    || a.name.ends_with(".AppImage")
-            })
-            .map(|a| a.browser_download_url.clone());
-
+    if is_newer_version(&latest, &current) {
         Ok(Some(UpdateInfo {
             current_version: current,
             latest_version: latest,
-            download_url,
+            download_url: pick_download_url(&release.assets),
             release_notes: release.body,
         }))
     } else {
@@ -167,6 +208,59 @@ struct GitHubRelease {
 struct GitHubAsset {
     name: String,
     browser_download_url: String,
+}
+
+#[tauri::command]
+pub async fn download_and_install_update(download_url: String) -> Result<String, String> {
+    let temp_dir = std::env::temp_dir();
+    let file_name = download_url
+        .rsplit('/')
+        .next()
+        .unwrap_or("update.exe");
+    let installer_path = temp_dir.join(file_name);
+
+    // Download installer
+    let resp = reqwest::get(&download_url)
+        .await
+        .map_err(|e| format!("下载失败: {e}"))?;
+
+    if !resp.status().is_success() {
+        return Err(format!("下载失败 (HTTP {})", resp.status()));
+    }
+
+    let bytes = resp
+        .bytes()
+        .await
+        .map_err(|e| format!("读取下载数据失败: {e}"))?;
+
+    std::fs::write(&installer_path, &bytes)
+        .map_err(|e| format!("保存安装包失败: {e}"))?;
+
+    log::info!("Update installer saved to: {}", installer_path.display());
+
+    // Launch installer silently
+    let status = if file_name.ends_with(".msi") {
+        std::process::Command::new("msiexec")
+            .args(["/i", installer_path.to_str().unwrap(), "/quiet", "/norestart"])
+            .spawn()
+            .map_err(|e| format!("启动安装器失败: {e}"))?
+            .wait()
+            .map_err(|e| format!("等待安装器失败: {e}"))?
+    } else {
+        // NSIS installer
+        std::process::Command::new(&installer_path)
+            .arg("/S")
+            .spawn()
+            .map_err(|e| format!("启动安装器失败: {e}"))?
+            .wait()
+            .map_err(|e| format!("等待安装器失败: {e}"))?
+    };
+
+    if status.success() {
+        Ok("安装完成，应用即将重启".to_string())
+    } else {
+        Err(format!("安装器退出码: {}", status.code().unwrap_or(-1)))
+    }
 }
 
 #[derive(Serialize)]

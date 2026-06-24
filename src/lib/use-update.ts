@@ -6,12 +6,14 @@ let startupCheckStarted = false;
 
 export function useUpdate() {
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
+  const [updateError, setUpdateError] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
   const [checked, setChecked] = useState(false);
   const mountedRef = useRef(true);
 
   const checkUpdate = useCallback(async () => {
     setChecking(true);
+    setUpdateError(null);
     try {
       const info = await checkForUpdate();
       if (mountedRef.current) {
@@ -20,7 +22,11 @@ export function useUpdate() {
       }
       return info;
     } catch (error) {
-      console.error('Failed to check for update:', error);
+      if (mountedRef.current) {
+        setUpdateInfo(null);
+        setUpdateError(String(error));
+        setChecked(true);
+      }
       return null;
     } finally {
       if (mountedRef.current) setChecking(false);
@@ -40,6 +46,7 @@ export function useUpdate() {
 
   return {
     updateInfo,
+    updateError,
     hasUpdate: !!updateInfo,
     checking,
     checked,
