@@ -1,4 +1,6 @@
+#[cfg(target_os = "macos")]
 pub mod macos_ocr;
+#[cfg(target_os = "windows")]
 pub mod windows_ocr;
 
 use serde::{Deserialize, Serialize};
