@@ -156,7 +156,7 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          body_path: release-notes/v0.4.0.md
+          body_path: release-notes/v0.4.1.md
           files: |
             artifacts/windows-installer/**/*.msi
             artifacts/windows-installer/**/*.exe
